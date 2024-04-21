@@ -31,11 +31,11 @@ const StationValues = struct {
 };
 
 const StationCalculator = struct {
-    mapCalculator: std.StringHashMap(*StationValues),
+    mapCalculator: std.StringArrayHashMap(*StationValues),
 
     pub fn create() StationCalculator {
         return StationCalculator{
-            .mapCalculator = std.StringHashMap(*StationValues).init(std.heap.page_allocator),
+            .mapCalculator = std.StringArrayHashMap(*StationValues).init(std.heap.page_allocator),
         };
     }
 
@@ -93,7 +93,18 @@ pub fn main() !void {
         else => return err, // Propagate error
     }
 
+    const compareStrings = struct {
+        keys: [][]const u8,
+
+        pub fn lessThan(ctx: @This(), a_index: usize, b_index: usize) bool {
+            return std.mem.lessThan(u8, ctx.keys[a_index], ctx.keys[b_index]);
+        }
+    };
+
+    stationsMaxMap.mapCalculator.sort(compareStrings{.keys = stationsMaxMap.mapCalculator.keys()});
     var iter = stationsMaxMap.mapCalculator.iterator();
+    // var keys = try stationsMaxMap.mapCalculator.keys();
+
     while (iter.next()) |entry| {
         const key = entry.key_ptr.*;
         const stationValue = entry.value_ptr.*;
