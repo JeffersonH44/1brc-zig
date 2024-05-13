@@ -51,7 +51,6 @@ const StationCalculator = struct {
             try self.mapCalculator.put(clonedStation, stationValues);
         }
     }
-
 };
 
 pub fn main() !void {
