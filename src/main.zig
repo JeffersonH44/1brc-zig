@@ -2,31 +2,52 @@ const std = @import("std");
 const stdout = std.io.getStdOut().writer();
 const fs = std.fs;
 const print = std.debug.print;
+const ArrayList = std.ArrayList;
+const ARR_SIZE = 1024;
 
 const StationValues = struct {
-    maxValue: f16,
-    minValue: f16,
+    maxValue: f32,
+    minValue: f32,
     sumValue: f32,
     count: usize,
+    total: usize,
+    elements: @Vector(ARR_SIZE, f32),
 
-    pub fn init(value: f16) StationValues {
+    pub fn init(value: f32) StationValues {
+        var elements = std.mem.zeroes(@Vector(ARR_SIZE, f32));
+        elements[0] = value;
+
         return StationValues{
             .maxValue = value,
             .minValue = value,
-            .sumValue = value,
+            .sumValue = 0.0,
             .count = 1,
+            .total = 1,
+            .elements = elements, 
         };
     }
 
     pub fn addValue(self: *StationValues, value: f16) void {
-        self.sumValue += @as(f32, value);
+        const valueAsFloat = @as(f32, value);
+        self.elements[self.count] = valueAsFloat;
         self.count += 1;
-        if (value > self.maxValue) {
-            self.maxValue = value;
+        // self.sumValue += valueAsFloat;
+
+        if(self.count == ARR_SIZE) {
+            self.calculate();
         }
-        if (value < self.minValue) {
-            self.minValue = value;
+    }
+
+    pub fn calculate(self: *StationValues) void {
+        if (self.count == 0) {
+            return;
         }
+        
+        self.sumValue += @reduce(.Add, self.elements);
+        self.minValue = @min(self.minValue, @reduce(.Min, self.elements));
+        self.maxValue = @max(self.maxValue, @reduce(.Max, self.elements));
+        self.total += self.count;
+        self.count = 0;
     }
 };
 
@@ -49,6 +70,13 @@ const StationCalculator = struct {
             const stationValues = try std.heap.page_allocator.create(StationValues);
             stationValues.* = StationValues.init(value);
             try self.mapCalculator.put(clonedStation, stationValues);
+        }
+    }
+
+    pub fn calculateRemainingElements(self: StationCalculator) void {
+        var iter = self.mapCalculator.iterator();
+        while (iter.next()) |entry| {
+            entry.value_ptr.*.calculate();
         }
     }
 };
@@ -92,6 +120,8 @@ pub fn main() !void {
         else => return err, // Propagate error
     }
 
+    stationsMaxMap.calculateRemainingElements();
+
     const compareStrings = struct {
         keys: [][]const u8,
 
@@ -109,9 +139,10 @@ pub fn main() !void {
         const stationValue = entry.value_ptr.*;
         const maxValue = stationValue.maxValue;
         const minValue = stationValue.minValue;
-        const meanValue = stationValue.sumValue / @as(f32, @floatFromInt(stationValue.count));
+        const meanValue = stationValue.sumValue / @as(f32, @floatFromInt(stationValue.total));
+        const total = stationValue.total;
 
-        print("Station: {s}, max value: {d}, min value: {d}, mean value: {d}\n",.{key, maxValue, minValue, meanValue});
+        print("Station: {s}, max value: {d}, min value: {d}, mean value: {d} total: {d}\n",.{key, maxValue, minValue, meanValue, total});
     }
     // print("max value: {d}", .{max_value});
 }
