@@ -3,7 +3,7 @@ const stdout = std.io.getStdOut().writer();
 const fs = std.fs;
 const print = std.debug.print;
 const ArrayList = std.ArrayList;
-const ARR_SIZE = 1024;
+const ARR_SIZE = 8;
 
 const StationValues = struct {
     maxValue: f32,
